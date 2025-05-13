@@ -79,45 +79,47 @@ require("lazy").setup({
   -- == MASON (binary manager) ==
   { "williamboman/mason.nvim", build = ":MasonUpdate", config = true },
 
-  -- == MASON‑LSPCONFIG (bridge) ==
+  -- == MASON-LSPCONFIG (bridge) ==
   {
-    "williamboman/mason-lspconfig.nvim",
-    dependencies = { "neovim/nvim-lspconfig" },
-    config = function()
-      require("mason-lspconfig").setup({
-        ensure_installed = { "pyright", "bashls", "rust_analyzer" },
-      })
+  "mason-org/mason-lspconfig.nvim",   -- ← new org name
+  dependencies = "neovim/nvim-lspconfig",
+  config = function()
+    require("mason-lspconfig").setup({
+      ensure_installed = { "pyright", "bashls", "rust_analyzer" },
 
-      require("mason-lspconfig").setup_handlers({
-        -- default for every server
+      -- ⬇ disable ALL the new helpers safely
+      automatic_enable  = { enable = false },
+      automatic_install = { enable = false },
+      automatic_setup   = { enable = false },
+
+      handlers = {                      -- your custom setup
         function(server)
           require("lspconfig")[server].setup({ on_attach = lsp_highlight_on_attach })
         end,
-
-        -- Pyright override
         ["pyright"] = function()
           require("lspconfig").pyright.setup({
             on_attach  = lsp_highlight_on_attach,
             pythonPath = vim.g.python3_host_prog,
-            settings   = {
+            settings = {
               python = {
                 analysis = {
-                  extraPaths         = { vim.fn.getcwd() .. "/src" },
-                  autoSearchPaths    = true,
+                  extraPaths      = { vim.fn.getcwd() .. "/src" },
+                  autoSearchPaths = true,
                   useLibraryCodeForTypes = true,
                 },
               },
             },
           })
         end,
-
-        -- Rust analyzer override
         ["rust_analyzer"] = function()
           require("lspconfig").rust_analyzer.setup({ on_attach = lsp_highlight_on_attach })
         end,
-      })
-    end,
-  },
+      },
+    })
+  end,
+},
+
+
 
   -- == COMPLETION (nvim‑cmp + sources) ==
   {
@@ -171,7 +173,11 @@ require("lazy").setup({
   },
 
   -- == VIM‑ILLUMINATE (highlight references) ==
-  { "RRethy/vim-illuminate", event = "BufReadPost", opts = { delay = 120 } },
+  { "RRethy/vim-illuminate", event = "BufReadPost", 
+  config = function()
+	  require("illuminate").configure({ delay = 120 })
+  end,
+},
 
   -- == COMMENT.NVIM (toggle comments) ==
   { "numToStr/Comment.nvim", keys = { { "gc", mode = { "n", "x" } } }, config = true },
@@ -215,13 +221,18 @@ vim.keymap.set("v", "<leader>/", "gc",  { remap = true, desc = "Toggle comment b
 local wk = require("which-key")
 
 wk.register({
-  ["<leader>"] = {
-    -- Help section grouped under "h"
-    h = {
-      name = "+help",  -- Shows "h +help" as a sub-menu
-      h = { "<cmd>Telescope help_tags<CR>", "Search :help (Telescope)" },  -- Open Telescope help tags
-      t = { "<cmd>WhichKey<CR>", "Show which-key pop-up" },  -- Show keybinding cheat sheet
-      k = { "<cmd>NvimTreeToggle<CR>", "Toggle NvimTree (File Explorer)" },  -- Example: Toggle file explorer
-    },
-  },
+  -- these keys are AFTER your <leader>
+  h  = { name = "+help" },                                        -- <leader>h shows a “+help” group
+  hh = { "<cmd>Telescope help_tags<CR>", "Search help tags" },    -- <leader>hh
+  hk = { "<cmd>NvimTreeToggle<CR>",    "Toggle file explorer" },  -- <leader>hk
+  ht = { "<cmd>WhichKey<CR>",          "Show which-key popup" }, -- <leader>ht
+}, {
+  prefix = "<leader>",  -- tells which-key that all of the above live under <leader>
+  mode   = "n",         -- normal mode only
+  silent = true,        -- all of these should be silent
 })
+
+
+
+
+
