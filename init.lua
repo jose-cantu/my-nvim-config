@@ -64,6 +64,21 @@ require("lazy").setup({
     end,
   },
 
+  -- == Excel grid setup for neovim rainbow_csv == --
+  {
+    "cameron-wags/rainbow_csv.nvim",
+    ft       = { "csv", "tsv", "csv_semicolon", "csv_pipe" }, -- lazy-load only for delimited files
+    opts     = { separators = { ",", "\t", ";" } },           -- recognise commas, tabs *and* semicolons
+    config   = function(_, opts)
+      require("rainbow_csv").setup(opts)
+      -- optional: auto-align as soon as you open the file
+      vim.api.nvim_create_autocmd("BufReadPost", {
+        pattern = { "*.csv", "*.tsv" },
+        callback = function() vim.cmd("RainbowAlign") end,
+      })
+    end,
+  },
+
   -- == TREESITTER (Syntax Highlighting) ==
   {
     "nvim-treesitter/nvim-treesitter",
@@ -182,6 +197,19 @@ require("lazy").setup({
   -- == COMMENT.NVIM (toggle comments) ==
   { "numToStr/Comment.nvim", keys = { { "gc", mode = { "n", "x" } } }, config = true },
 
+  -- == NVIM-LINT (Python linting) ==
+  {
+    "mfussenegger/nvim-lint",
+    event = { "BufReadPost", "BufWritePost" },
+    config = function()
+      local lint = require("lint")
+      lint.linters_by_ft = { python = { "flake8" } }
+      vim.api.nvim_create_autocmd({ "BufWritePost", "BufEnter" }, {
+        callback = function() lint.try_lint() end,
+      })
+    end,
+  },
+
   -- == nvim-tree.lua (file explorer) ==
   {
     "nvim-tree/nvim-tree.lua",
@@ -215,6 +243,23 @@ vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle NvimTre
 -- VS‑Code style comment toggles via Comment.nvim
 vim.keymap.set("n", "<leader>/", "gcc", { remap = true, desc = "Toggle comment line" })
 vim.keymap.set("v", "<leader>/", "gc",  { remap = true, desc = "Toggle comment block" })
+
+-- rainbow_csv common commands CSV/TSV helper
+-- ALIGN / REALIGN your spreadsheet
+vim.keymap.set(
+  "n",
+  "<leader>ca",
+  "<cmd>RainbowAlign<CR>",
+  { desc = "CSV/TSV: align columns" }
+)
+
+-- Sort by current column (header preserved)
+vim.keymap.set(
+  "n",
+  "<leader>cs",
+  "<cmd>RCsvSort<CR>",
+  { desc = "CSV/TSV: sort by current column" }
+)
 
 -- 6) HELP SYSTEM (which-key integration) -------------------------------------
 --------------------------------------------------------------------------------
