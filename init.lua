@@ -46,6 +46,7 @@ end
 -- 4) PLUGINS VIA lazy.nvim -----------------------------------------------------
 --------------------------------------------------------------------------------
 require("lazy").setup({
+  spec = {
 
   {
     "folke/which-key.nvim",
@@ -136,39 +137,6 @@ require("lazy").setup({
 
 
 
-  -- == COMPLETION (nvim‑cmp + sources) ==
-  {
-    "hrsh7th/nvim-cmp",
-    dependencies = {
-      "hrsh7th/cmp-nvim-lsp", "hrsh7th/cmp-path", "hrsh7th/cmp-buffer",
-      "L3MON4D3/LuaSnip", "saadparwaiz1/cmp_luasnip",
-    },
-    config = function()
-      local cmp, luasnip = require("cmp"), require("luasnip")
-      cmp.setup({
-        snippet = { expand = function(a) luasnip.lsp_expand(a.body) end },
-        mapping = {
-          ["<Tab>"]   = cmp.mapping.select_next_item(),
-          ["<S-Tab>"] = cmp.mapping.select_prev_item(),
-          ["<CR>"]    = cmp.mapping.confirm({ select = true }),
-        },
-        sources = {
-          { name = "nvim_lsp" }, { name = "luasnip" },
-          { name = "path" },      { name = "buffer" },
-        },
-      })
-    end,
-  },
-
-  -- == RUST TOOLS (Optional) ==
-  {
-    "simrat39/rust-tools.nvim",
-    ft = { "rust" },
-    dependencies = "neovim/nvim-lspconfig",
-    config = function()
-      require("rust-tools").setup({ server = { on_attach = lsp_highlight_on_attach } })
-    end,
-  },
 
   -- == TELESCOPE (Fuzzy Finder) ==
   {
@@ -227,6 +195,8 @@ require("lazy").setup({
         end,
       })
     end,
+  },
+  { import = "plugins" },   -- pulls in rustlings.lua
   },
 })
 
