@@ -235,17 +235,12 @@ vim.keymap.set(
 --------------------------------------------------------------------------------
 local wk = require("which-key")
 
-wk.register({
-  -- these keys are AFTER your <leader>
-  h  = { name = "+help" },                                        -- <leader>h shows a “+help” group
-  hh = { "<cmd>Telescope help_tags<CR>", "Search help tags" },    -- <leader>hh
-  hk = { "<cmd>NvimTreeToggle<CR>",    "Toggle file explorer" },  -- <leader>hk
-  ht = { "<cmd>WhichKey<CR>",          "Show which-key popup" }, -- <leader>ht
-}, {
-  prefix = "<leader>",  -- tells which-key that all of the above live under <leader>
-  mode   = "n",         -- normal mode only
-  silent = true,        -- all of these should be silent
-})
+wk.add({                                -- <- prefer add() for v3 syntax sugar
+  { "<leader>h",  group = "+help" },    -- banner for the whole subtree
+  { "<leader>hh", "<cmd>Telescope help_tags<CR>", desc = "Search help tags" },
+  { "<leader>hk", "<cmd>NvimTreeToggle<CR>",      desc = "Toggle file explorer" },
+  { "<leader>ht", "<cmd>WhichKey<CR>",            desc = "Show which‑key popup" },
+}, { mode = "n", silent = true })
 
 
 
