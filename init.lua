@@ -111,6 +111,10 @@ require("lazy").setup({
   "mason-org/mason-lspconfig.nvim",   -- ← new org name
   dependencies = "neovim/nvim-lspconfig",
   config = function()
+	
+  -- nvim-cmp -- LSP handshake (runs after cmp is on runtimepath) ---- 
+    local cmp_cap = require("cmp_nvim_lsp").default_capabilities()  
+    
     require("mason-lspconfig").setup({
       ensure_installed = { "pyright", "bashls", "rust_analyzer" },
 
@@ -121,11 +125,12 @@ require("lazy").setup({
 
       handlers = {                      -- your custom setup
         function(server)
-          require("lspconfig")[server].setup({ on_attach = lsp_highlight_on_attach })
+          require("lspconfig")[server].setup({ on_attach = lsp_highlight_on_attach, capabilities = cmp_cap })
         end,
         ["pyright"] = function()
           require("lspconfig").pyright.setup({
             on_attach  = lsp_highlight_on_attach,
+	    capabilities = cmp_cap, 
             pythonPath = vim.g.python3_host_prog,
             settings = {
               python = {
@@ -139,15 +144,12 @@ require("lazy").setup({
           })
         end,
         ["rust_analyzer"] = function()
-          require("lspconfig").rust_analyzer.setup({ on_attach = lsp_highlight_on_attach })
+          require("lspconfig").rust_analyzer.setup({ on_attach = lsp_highlight_on_attach, capabilities = cmp_cap })
         end,
       },
     })
   end,
 },
-
-
-
 
   -- == TELESCOPE (Fuzzy Finder) ==
   {
@@ -217,6 +219,7 @@ require("lazy").setup({
 vim.opt.number    = true
 vim.opt.mouse     = "a"
 vim.opt.clipboard = "unnamedplus"
+vim.opt.completeopt = { "menuone", "noselect", "noinsert" } 
 
 -- Toggle file explorer
 vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle NvimTree" })
@@ -252,6 +255,7 @@ wk.add({
    { "<leader>hk", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file explorer" },
    { "<leader>ht", "<cmd>WhichKey<CR>", desc = "Show which-key popup" },
    }, { mode = "n", silent = true }) 
+
 
 
 
