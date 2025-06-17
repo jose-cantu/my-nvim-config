@@ -21,7 +21,7 @@ vim.opt.rtp:prepend(lazypath)
 vim.g.loaded_netrw       = 1
 
 -- Point Neovim’s Python host to the MicroSeq conda env
-vim.g.python3_host_prog = "/home/jason/anaconda3/envs/MicroSeq/bin/python"
+vim.g.python3_host_prog = vim.fn.exepath("python3")
 
 --------------------------------------------------------------------------------
 -- 3) LSP HELPER ----------------------------------------------------------------
@@ -53,6 +53,17 @@ require("lazy").setup({
     priority = 900,
     config   = function() require("which-key").setup({}) end,
   },
+
+  -- instal icon set used by which-key pop-ups (which is purely cosmetic) 
+  { 
+    "echasnovski/mini.nvim",
+    version = false, -- tracking main branch 
+    config = function(_, opts) -- using opts is optional here; can omit later for defaults 
+	require("mini.icons").setup(opts) 
+    end, 
+    -- future optional overrrides can go here..... 
+    -- opts = { default_style = "rounded" }, as an example..... 
+  }, 
 
 -- == THEME: Gruvbox ==
   {
@@ -103,7 +114,7 @@ require("lazy").setup({
     require("mason-lspconfig").setup({
       ensure_installed = { "pyright", "bashls", "rust_analyzer" },
 
-      -- ⬇ disable ALL the new helpers safely
+      -- disable ALL the new helpers safely
       automatic_enable  = { enable = false },
       automatic_install = { enable = false },
       automatic_setup   = { enable = false },
@@ -235,12 +246,13 @@ vim.keymap.set(
 --------------------------------------------------------------------------------
 local wk = require("which-key")
 
-wk.add({                                -- <- prefer add() for v3 syntax sugar
-  { "<leader>h",  group = "+help" },    -- banner for the whole subtree
-  { "<leader>hh", "<cmd>Telescope help_tags<CR>", desc = "Search help tags" },
-  { "<leader>hk", "<cmd>NvimTreeToggle<CR>",      desc = "Toggle file explorer" },
-  { "<leader>ht", "<cmd>WhichKey<CR>",            desc = "Show which‑key popup" },
-}, { mode = "n", silent = true })
+wk.add({
+   { "<leader>h", group = "+help" }, -- banner for whole subtree 
+   { "<leader>hh", "<cmd>Telescope help_tag<CR>", desc = "Search help tags" },
+   { "<leader>hk", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file explorer" },
+   { "<leader>ht", "<cmd>WhichKey<CR>", desc = "Show which-key popup" },
+   }, { mode = "n", silent = true }) 
+
 
 
 
