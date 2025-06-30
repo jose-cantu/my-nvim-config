@@ -19,6 +19,7 @@ vim.opt.rtp:prepend(lazypath)
 --------------------------------------------------------------------------------
 -- Disable netrw so nvim-tree can own file‑explorer duties
 vim.g.loaded_netrw       = 1
+vim.g.loaded_netrwPlugin = 1
 
 -- Point Neovim’s Python host to the MicroSeq conda env
 vim.g.python3_host_prog = vim.fn.exepath("python3")
@@ -109,7 +110,10 @@ require("lazy").setup({
   -- == MASON-LSPCONFIG (bridge) ==
   {
   "mason-org/mason-lspconfig.nvim",   -- ← new org name
-  dependencies = "neovim/nvim-lspconfig",
+  dependencies = {
+    "neovim/nvim-lspconfig",
+    "hrsh7th/nvim-cmp",
+  },
   config = function()
 	
   -- nvim-cmp -- LSP handshake (runs after cmp is on runtimepath) ---- 
@@ -118,10 +122,8 @@ require("lazy").setup({
     require("mason-lspconfig").setup({
       ensure_installed = { "pyright", "bashls", "rust_analyzer" },
 
-      -- disable ALL the new helpers safely
-      automatic_enable  = { enable = false },
-      automatic_install = { enable = false },
-      automatic_setup   = { enable = false },
+      -- disable automatic server installation
+      automatic_installation = false,
 
       handlers = {                      -- your custom setup
         function(server)
@@ -130,10 +132,10 @@ require("lazy").setup({
         ["pyright"] = function()
           require("lspconfig").pyright.setup({
             on_attach  = lsp_highlight_on_attach,
-	    capabilities = cmp_cap, 
-            pythonPath = vim.g.python3_host_prog,
+            capabilities = cmp_cap,
             settings = {
               python = {
+                pythonPath = vim.g.python3_host_prog,
                 analysis = {
                   extraPaths      = { vim.fn.getcwd() .. "/src" },
                   autoSearchPaths = true,
@@ -251,7 +253,7 @@ local wk = require("which-key")
 
 wk.add({
    { "<leader>h", group = "+help" }, -- banner for whole subtree 
-   { "<leader>hh", "<cmd>Telescope help_tag<CR>", desc = "Search help tags" },
+   { "<leader>hh", "<cmd>Telescope help_tags<CR>", desc = "Search help tags" },
    { "<leader>hk", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file explorer" },
    { "<leader>ht", "<cmd>WhichKey<CR>", desc = "Show which-key popup" },
    }, { mode = "n", silent = true }) 
