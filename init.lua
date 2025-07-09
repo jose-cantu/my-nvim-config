@@ -1,10 +1,8 @@
---------------------------------------------------------------------------------
--- init.lua (Fresh Minimal Config – corrected)
---------------------------------------------------------------------------------
+--──────────────────────────────────────────────────────────────────────────────
+-- init.lua  ·  Neovim ≥ 0.11  (lazy.nvim + Mason v2 + full IDE stack)
+--──────────────────────────────────────────────────────────────────────────────
 
---------------------------------------------------------------------------------
--- 1) BOOTSTRAP lazy.nvim -------------------------------------------------------
---------------------------------------------------------------------------------
+-- 1) BOOTSTRAP lazy.nvim ------------------------------------------------------
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
@@ -14,20 +12,20 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
---------------------------------------------------------------------------------
--- 2) EARLY OPTIONS & GLOBALS ---------------------------------------------------
---------------------------------------------------------------------------------
--- Disable netrw so nvim-tree can own file‑explorer duties
-vim.g.loaded_netrw       = 1
-vim.g.loaded_netrwPlugin = 1
+-- 2) EARLY GLOBAL OPTIONS ------------------------------------------------------
+vim.g.loaded_netrw, vim.g.loaded_netrwPlugin = 1, 1     -- nuke netrw (NvimTree owns it)
 
--- Point Neovim’s Python host to the MicroSeq conda env
-vim.g.python3_host_prog = vim.fn.exepath("python3")
+-- Prefer active venv/conda interpreter for :Python3 --------------------------------
+do
+  local venv = os.getenv("VIRTUAL_ENV") or os.getenv("CONDA_PREFIX")
+  if venv and vim.fn.executable(venv .. "/bin/python") == 1 then
+    vim.g.python3_host_prog = venv .. "/bin/python"
+  else
+    vim.g.python3_host_prog = vim.fn.exepath("python3")
+  end
+end
 
---------------------------------------------------------------------------------
--- 3) LSP HELPER ----------------------------------------------------------------
---------------------------------------------------------------------------------
--- Highlight all references to symbol under cursor while you pause
+-- 3) LSP helper – highlight references under cursor ---------------------------
 local function lsp_highlight_on_attach(client, bufnr)
   if client.server_capabilities.documentHighlightProvider then
     vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
@@ -38,229 +36,198 @@ local function lsp_highlight_on_attach(client, bufnr)
       buffer = bufnr,
       callback = vim.lsp.buf.clear_references,
     })
-  end 
+  end
 end
 
-
-
---------------------------------------------------------------------------------
--- 4) PLUGINS VIA lazy.nvim -----------------------------------------------------
---------------------------------------------------------------------------------
+-- 4) PLUGINS ------------------------------------------------------------------
 require("lazy").setup({
   spec = {
+    ------------------------------------------------------------------------
+    -- UX BASICS
+    ------------------------------------------------------------------------
+    { "folke/which-key.nvim", priority = 900,
+      config = function() require("which-key").setup({}) end },
 
-  {
-    "folke/which-key.nvim",
-    priority = 900,
-    config   = function() require("which-key").setup({}) end,
-  },
+    { "nvim-tree/nvim-web-devicons", lazy = true },
+    { "echasnovski/mini.nvim",       version = false },
 
-  -- instal icon set used by which-key pop-ups (which is purely cosmetic) 
-  { 
-    "echasnovski/mini.nvim",
-    version = false, -- tracking main branch 
-    config = function(_, opts) -- using opts is optional here; can omit later for defaults 
-	require("mini.icons").setup(opts) 
-    end, 
-    -- future optional overrrides can go here..... 
-    -- opts = { default_style = "rounded" }, as an example..... 
-  }, 
+    ------------------------------------------------------------------------
+    -- VISUALS
+    ------------------------------------------------------------------------
+    { "ellisonleao/gruvbox.nvim", name = "gruvbox", priority = 1000,
+      config = function()
+        require("gruvbox").setup({ contrast = "soft", bold = true })
+        vim.cmd.colorscheme("gruvbox")
+      end },
 
--- == THEME: Gruvbox ==
-  {
-    "ellisonleao/gruvbox.nvim",
-    name     = "gruvbox",
-    priority = 1000, -- Load first so colors apply correctly
-    config = function()
-      require("gruvbox").setup({ contrast = "soft", bold = true })
-      vim.cmd.colorscheme("gruvbox")
-    end,
-  },
-
-  -- == Excel grid setup for neovim rainbow_csv == --
-  {
-    "cameron-wags/rainbow_csv.nvim",
-    ft       = { "csv", "tsv", "csv_semicolon", "csv_pipe" }, -- lazy-load only for delimited files
-    opts     = { separators = { ",", "\t", ";" } },           -- recognise commas, tabs *and* semicolons
-    config   = function(_, opts)
-      require("rainbow_csv").setup(opts)
-      -- optional: auto-align as soon as you open the file
-      vim.api.nvim_create_autocmd("BufReadPost", {
-        pattern = { "*.csv", "*.tsv" },
-        callback = function() vim.cmd("RainbowAlign") end,
-      })
-    end,
-  },
-
-  -- == TREESITTER (Syntax Highlighting) ==
-  {
-    "nvim-treesitter/nvim-treesitter",
-    build = ":TSUpdate",
-    config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = { "lua", "vim", "python", "bash", "rust" },
-        highlight        = { enable = true },
-      })
-    end,
-  },
-
-  -- == MASON (binary manager) ==
-  { "williamboman/mason.nvim", build = ":MasonUpdate", config = true },
-
-  -- == MASON-LSPCONFIG (bridge) ==
-  {
-  "mason-org/mason-lspconfig.nvim",   -- ← new org name
-  dependencies = {
-    "neovim/nvim-lspconfig",
-    "hrsh7th/nvim-cmp",
-  },
-  config = function()
-	
-  -- nvim-cmp -- LSP handshake (runs after cmp is on runtimepath) ---- 
-    local cmp_cap = require("cmp_nvim_lsp").default_capabilities()  
-    
-    require("mason-lspconfig").setup({
-      ensure_installed = { "pyright", "bashls", "rust_analyzer" },
-
-      -- disable automatic server installation
-      automatic_installation = false,
-
-      handlers = {                      -- your custom setup
-        function(server)
-          require("lspconfig")[server].setup({ on_attach = lsp_highlight_on_attach, capabilities = cmp_cap })
-        end,
-        ["pyright"] = function()
-          require("lspconfig").pyright.setup({
-            on_attach  = lsp_highlight_on_attach,
-            capabilities = cmp_cap,
-            settings = {
-              python = {
-                pythonPath = vim.g.python3_host_prog,
-                analysis = {
-                  extraPaths      = { vim.fn.getcwd() .. "/src" },
-                  autoSearchPaths = true,
-                  useLibraryCodeForTypes = true,
-                },
-              },
-            },
-          })
-        end,
-        ["rust_analyzer"] = function()
-          require("lspconfig").rust_analyzer.setup({ on_attach = lsp_highlight_on_attach, capabilities = cmp_cap })
-        end,
+    -- Indent guides à la VS Code
+    { "lukas-reineke/indent-blankline.nvim",
+      main = "ibl",
+      event = "BufReadPost",
+      opts = {
+        indent = { char = "│" },
+        scope  = { enabled = true, show_start = false, show_end = false },
+        whitespace = { remove_blankline_trail = false },
+        exclude = { filetypes = { "help", "NvimTree" } },
       },
-    })
-  end,
-},
-
-  -- == TELESCOPE (Fuzzy Finder) ==
-  {
-    "nvim-telescope/telescope.nvim",
-    dependencies = "nvim-lua/plenary.nvim",
-    config = function() require("telescope").setup({}) end,
-  },
-
-  -- == FLASH (quick jump / better search) ==
-  {
-    "folke/flash.nvim",
-    event = "VeryLazy",
-    opts  = {},
-    keys  = {
-      { "<leader>s", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash jump" },
     },
-  },
 
-  -- == VIM‑ILLUMINATE (highlight references) ==
-  { "RRethy/vim-illuminate", event = "BufReadPost", 
-  config = function()
-	  require("illuminate").configure({ delay = 120 })
-  end,
-},
+    ------------------------------------------------------------------------
+    -- COMPLETION & SNIPPETS
+    ------------------------------------------------------------------------
+    { "hrsh7th/nvim-cmp", event = "InsertEnter", priority = 800,
+      dependencies = {
+        "L3MON4D3/LuaSnip",
+        "saadparwaiz1/cmp_luasnip",
+        "hrsh7th/cmp-nvim-lsp",
+        "hrsh7th/cmp-buffer",
+        "hrsh7th/cmp-path",
+        "rafamadriz/friendly-snippets",
+      },
+      config = function()
+        local cmp, luasnip = require("cmp"), require("luasnip")
+        require("luasnip.loaders.from_vscode").lazy_load()
+        cmp.setup({
+          completion   = { autocomplete = false },  -- only on demand (C‑Space)
+          experimental = { ghost_text = false },
+          snippet      = { expand = function(args) luasnip.lsp_expand(args.body) end },
+          mapping = cmp.mapping.preset.insert({
+            ["<C-Space>"] = cmp.mapping.complete(),
+            ["<C-e>"]     = cmp.mapping.abort(),
+            ["<CR>"]      = cmp.mapping.confirm({ select = false }),
+          }),
+          sources = cmp.config.sources({
+            { name = "nvim_lsp" }, { name = "luasnip" },
+            { name = "buffer"   }, { name = "path"   },
+          }),
+        })
+      end },
 
-  -- == COMMENT.NVIM (toggle comments) ==
-  { "numToStr/Comment.nvim", keys = { { "gc", mode = { "n", "x" } } }, config = true },
+    ------------------------------------------------------------------------
+    -- FILETYPE GOODIES
+    ------------------------------------------------------------------------
+    { "cameron-wags/rainbow_csv.nvim", ft = { "csv", "tsv", "csv_semicolon", "csv_pipe" },
+      opts = { separators = { ",", "\t", ";" } },
+      config = function(_, opts)
+        require("rainbow_csv").setup(opts)
+        vim.api.nvim_create_autocmd("BufReadPost", {
+          pattern = { "*.csv", "*.tsv" },
+          callback = function() vim.cmd("RainbowAlign") end,
+        })
+      end },
 
-  -- == NVIM-LINT (Python linting) ==
-  {
-    "mfussenegger/nvim-lint",
-    event = { "BufReadPost", "BufWritePost" },
-    config = function()
-      local lint = require("lint")
-      lint.linters_by_ft = { python = { "flake8" } }
-      vim.api.nvim_create_autocmd({ "BufWritePost", "BufEnter" }, {
-        callback = function() lint.try_lint() end,
-      })
-    end,
-  },
+    { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate",
+      config = function()
+        require("nvim-treesitter.configs").setup({
+          ensure_installed = { "lua", "vim", "python", "bash", "rust" },
+          highlight        = { enable = true },
+        })
+      end },
 
-  -- == nvim-tree.lua (file explorer) ==
-  {
-    "nvim-tree/nvim-tree.lua",
-    dependencies = "nvim-tree/nvim-web-devicons",
-    config = function()
-      require("nvim-tree").setup({
-        sort_by  = "case_sensitive",
-        view     = { width = 30, side = "left" },
-        renderer = { group_empty = true },
-        filters  = { dotfiles = false },
-        on_attach = function(bufnr)
-          local api = require("nvim-tree.api")
-          api.config.mappings.default_on_attach(bufnr)
-          vim.keymap.set("n", "?", api.tree.toggle_help, { buffer = bufnr, desc = "NvimTree Help" })
-        end,
-      })
-    end,
-  },
-  { import = "plugins" },   -- pulls in rustlings.lua
+    ------------------------------------------------------------------------
+    -- LSP & TOOLS (Mason v2)
+    ------------------------------------------------------------------------
+    { "williamboman/mason.nvim", build = ":MasonUpdate", config = true },
+
+    { "williamboman/mason-lspconfig.nvim",
+      dependencies = { "neovim/nvim-lspconfig", "hrsh7th/nvim-cmp" },
+      config = function()
+        local capabilities = require("cmp_nvim_lsp").default_capabilities()
+        require("mason-lspconfig").setup({
+          ensure_installed       = { "pyright", "bashls", "rust_analyzer" },
+          automatic_installation = false, -- keep manual control
+          handlers = {
+            function(server)
+              require("lspconfig")[server].setup({
+                on_attach    = lsp_highlight_on_attach,
+                capabilities = capabilities,
+              })
+            end,
+            pyright = function()
+              require("lspconfig").pyright.setup({
+                on_attach    = lsp_highlight_on_attach,
+                capabilities = capabilities,
+                settings = {
+                  python = {
+                    pythonPath = vim.g.python3_host_prog,
+                    analysis = {
+                      extraPaths      = { vim.fn.getcwd() .. "/src" },
+                      autoSearchPaths = true,
+                      useLibraryCodeForTypes = true,
+                    },
+                  },
+                },
+              })
+            end,
+          },
+        })
+      end },
+
+    { "mfussenegger/nvim-lint", event = { "BufReadPost", "BufWritePost" },
+      config = function()
+        local lint = require("lint")
+        lint.linters_by_ft = { python = { "flake8" } }
+        vim.api.nvim_create_autocmd({ "BufWritePost", "BufEnter" }, {
+          callback = function() lint.try_lint() end,
+        })
+      end },
+
+    ------------------------------------------------------------------------
+    -- NAVIGATION / UTIL
+    ------------------------------------------------------------------------
+    { "nvim-telescope/telescope.nvim", dependencies = "nvim-lua/plenary.nvim",
+      config = function() require("telescope").setup({}) end },
+
+    { "folke/flash.nvim", event = "VeryLazy", opts = {},
+      keys = {
+        { "<leader>s", mode = { "n", "x", "o" },
+          function() require("flash").jump() end, desc = "Flash jump" },
+      } },
+
+    { "RRethy/vim-illuminate", event = "BufReadPost",
+      config = function() require("illuminate").configure({ delay = 120 }) end },
+
+    { "numToStr/Comment.nvim",
+      keys = { { "gc", mode = { "n", "x" } } }, config = true },
+
+    { "nvim-tree/nvim-tree.lua", dependencies = "nvim-tree/nvim-web-devicons",
+      config = function()
+        require("nvim-tree").setup({
+          sort_by = "case_sensitive",
+          view = { width = 30, side = "left" },
+          renderer = { group_empty = true },
+          filters = { dotfiles = false },
+          on_attach = function(bufnr)
+            local api = require("nvim-tree.api")
+            api.config.mappings.default_on_attach(bufnr)
+            vim.keymap.set("n", "?", api.tree.toggle_help, { buffer = bufnr, desc = "NvimTree Help" })
+          end,
+        })
+      end },
+
+    { import = "plugins" }, -- your optional extra plugin modules
   },
 })
 
---------------------------------------------------------------------------------
--- 5) GLOBAL KEYMAPS & MISC OPTIONS -------------------------------------------
---------------------------------------------------------------------------------
-vim.opt.number    = true
-vim.opt.mouse     = "a"
-vim.opt.clipboard = "unnamedplus"
-vim.opt.completeopt = { "menuone", "noselect", "noinsert" } 
+-- 5) GLOBAL OPTIONS -----------------------------------------------------------
+vim.opt.number      = true
+vim.opt.mouse       = "a"
+vim.opt.clipboard   = "unnamedplus"
+vim.opt.completeopt = { "menuone", "noselect", "noinsert" }
 
--- Toggle file explorer
+-- 6) KEYMAPS ------------------------------------------------------------------
 vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle NvimTree" })
+vim.keymap.set("n", "<leader>/", "gcc", { remap = true, desc = "Comment line" })
+vim.keymap.set("v", "<leader>/", "gc",  { remap = true, desc = "Comment block" })
+vim.keymap.set("n", "<leader>ca", "<cmd>RainbowAlign<CR>", { desc = "CSV align" })
+vim.keymap.set("n", "<leader>cs", "<cmd>RCsvSort<CR>",     { desc = "CSV sort col" })
 
--- VS‑Code style comment toggles via Comment.nvim
-vim.keymap.set("n", "<leader>/", "gcc", { remap = true, desc = "Toggle comment line" })
-vim.keymap.set("v", "<leader>/", "gc",  { remap = true, desc = "Toggle comment block" })
-
--- rainbow_csv common commands CSV/TSV helper
--- ALIGN / REALIGN your spreadsheet
-vim.keymap.set(
-  "n",
-  "<leader>ca",
-  "<cmd>RainbowAlign<CR>",
-  { desc = "CSV/TSV: align columns" }
-)
-
--- Sort by current column (header preserved)
-vim.keymap.set(
-  "n",
-  "<leader>cs",
-  "<cmd>RCsvSort<CR>",
-  { desc = "CSV/TSV: sort by current column" }
-)
-
--- 6) HELP SYSTEM (which-key integration) -------------------------------------
---------------------------------------------------------------------------------
+-- 7) WHICH‑KEY HELP TREE ------------------------------------------------------
 local wk = require("which-key")
-
 wk.add({
-   { "<leader>h", group = "+help" }, -- banner for whole subtree 
-   { "<leader>hh", "<cmd>Telescope help_tags<CR>", desc = "Search help tags" },
-   { "<leader>hk", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file explorer" },
-   { "<leader>ht", "<cmd>WhichKey<CR>", desc = "Show which-key popup" },
-   }, { mode = "n", silent = true }) 
-
-
-
-
-
-
+  { "<leader>h",  group = "+help" },
+  { "<leader>hh", "<cmd>Telescope help_tags<CR>", desc = "Help search" },
+  { "<leader>hk", "<cmd>Telescope keymaps<CR>",   desc = "Keymap search" },
+  { "<leader>ht", "<cmd>WhichKey<CR>",            desc = "Which‑key" },
+}, { mode = "n", silent = true })
 
